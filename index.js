@@ -28,7 +28,12 @@ import paymentsRouter from "./routes/payments.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "http://localhost:5174",
+  "https://itp-frontend.onrender.com",
+  "https://itp-adminpanel.onrender.com"
+];
 
 // ---------- Create uploads directory----------
 const slipsDir = path.join(__dirname, "uploads", "slips");
@@ -45,6 +50,33 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
 
 
 //--------------------------- Route --------------------------//
+// Root route for deployment
+app.get("/", (req, res) => {
+  res.json({
+    message: "🚀 PetPulse Backend API is running!",
+    status: "success",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      vet: "/api/vet",
+      grooming: "/api/grooming", 
+      daycare: "/api/daycare",
+      adoption: "/api/adoption",
+      payments: "/api/payments",
+      admin: "/api/admin",
+      user: "/api/user"
+    }
+  });
+});
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 app.use("/api/vet", VetRoute)
 app.use("/api/grooming", GroomingRoute)
 app.use("/api/daycare", DayCareRoute)
@@ -63,6 +95,26 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sales', salesRoutes);
+
+// Catch-all route for undefined endpoints
+app.use("*", (req, res) => {
+  res.status(404).json({
+    message: "❌ Route not found",
+    status: "error",
+    requestedPath: req.originalUrl,
+    availableEndpoints: {
+      root: "/",
+      health: "/health",
+      vet: "/api/vet",
+      grooming: "/api/grooming", 
+      daycare: "/api/daycare",
+      adoption: "/api/adoption",
+      payments: "/api/payments",
+      admin: "/api/admin",
+      user: "/api/user"
+    }
+  });
+});
 
 // Connect MongoDB
 mongoose.connect(process.env.MONGODB_URI)
