@@ -3,6 +3,7 @@ import Pet from "../models/Pet.js";
 import User from "../models/User.js";
 import imageKit from "../configs/imageKit.js";
 import { promises as fs } from "fs";
+import mongoose from "mongoose";
 
 //API to create adoption
 export const createAdoption = async (req, res) => {
@@ -28,7 +29,7 @@ export const createAdoption = async (req, res) => {
             emergencyContact
         } = req.body;
 
-        // Validate required fields
+        // Enhanced validation for required fields
         const requiredFields = {
             pet: "Pet ID is required",
             name: "Name is required",
@@ -46,9 +47,17 @@ export const createAdoption = async (req, res) => {
         };
 
         for (const [field, message] of Object.entries(requiredFields)) {
-            if (!req.body[field]) {
+            if (!req.body[field] || req.body[field].toString().trim() === '') {
                 return res.status(400).json({ success: false, message });
             }
+        }
+
+        // Validate ObjectId format for pet
+        if (!mongoose.Types.ObjectId.isValid(pet)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid pet ID format" 
+            });
         }
 
         if (!id) {
@@ -60,16 +69,46 @@ export const createAdoption = async (req, res) => {
             return res.status(400).json({ success: false, message: "Pet not found" });
         }
 
+        // Check if pet is already adopted
+        if (petData.isAdopted) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "This pet is no longer available for adoption" 
+            });
+        }
+
         const userData = await User.findById(id).select("-password");
         if (!userData) {
             return res.status(400).json({ success: false, message: "User not found" });
         }
 
-        // Additional validation for age
-        if (age < 18 || age > 100) {
+        // Check if user already has a pending adoption for this pet
+        const existingAdoption = await Adoption.findOne({ 
+            user: id, 
+            pet: pet, 
+            status: { $in: ['pending', 'approved'] } 
+        });
+        if (existingAdoption) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "You already have a pending or approved adoption for this pet" 
+            });
+        }
+
+        // Enhanced validation for age
+        const ageNum = Number(age);
+        if (isNaN(ageNum) || ageNum < 18 || ageNum > 100) {
             return res.status(400).json({ 
                 success: false, 
                 message: "You must be between 18 and 100 years old to adopt" 
+            });
+        }
+
+        // Validate name format
+        if (!/^[A-Za-z\s]+$/.test(name.trim())) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Name can only contain letters and spaces" 
             });
         }
 
@@ -78,7 +117,7 @@ export const createAdoption = async (req, res) => {
         if (!phoneRegex.test(phone)) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Please enter a valid Sri Lankan phone number" 
+                message: "Please enter a valid Sri Lankan phone number (07XXXXXXXX or +947XXXXXXXX)" 
             });
         }
 
@@ -86,17 +125,96 @@ export const createAdoption = async (req, res) => {
         if (!phoneRegex.test(emergencyContact)) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Please enter a valid emergency contact number" 
+                message: "Please enter a valid emergency contact number (07XXXXXXXX or +947XXXXXXXX)" 
             });
         }
 
-        // Validate reason length
+        // Validate child option
+        if (!['no_child', 'below_5', 'above_5'].includes(child)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Child option must be no_child, below_5, or above_5" 
+            });
+        }
+
+        // Validate experience level
+        if (!['none', 'beginner', 'intermediate', 'expert'].includes(experience)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Experience must be none, beginner, intermediate, or expert" 
+            });
+        }
+
+        // Validate living space
+        if (!['apartment', 'house', 'farm', 'other'].includes(livingSpace)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Living space must be apartment, house, farm, or other" 
+            });
+        }
+
+        // Validate other pets
+        if (!['none', 'dogs', 'cats', 'other', 'multiple'].includes(otherPets)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Other pets must be none, dogs, cats, other, or multiple" 
+            });
+        }
+
+        // Validate time commitment
+        const validTimeCommitments = ['part_time', 'full_time', 'weekends_only', 'flexible'];
+        if (!validTimeCommitments.includes(timeCommitment)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Time commitment must be one of: " + validTimeCommitments.join(', ') 
+            });
+        }
+
+        // Validate reason length and content
         if (reason.trim().length < 10) {
             return res.status(400).json({ 
                 success: false, 
                 message: "Reason must be at least 10 characters long" 
             });
         }
+
+        if (reason.trim().length > 500) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Reason cannot exceed 500 characters" 
+            });
+        }
+
+        // Validate address length
+        if (address.trim().length < 5) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Address must be at least 5 characters long" 
+            });
+        }
+
+        if (address.trim().length > 200) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Address cannot exceed 200 characters" 
+            });
+        }
+
+        // Validate occupation
+        if (occupation.trim().length < 2) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Occupation must be at least 2 characters long" 
+            });
+        }
+
+        if (occupation.trim().length > 100) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Occupation cannot exceed 100 characters" 
+            });
+        }
+
 
         // Handle NIC image upload
         let nicImageURL = "";
@@ -241,20 +359,39 @@ export const editAdoption = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
-    // Validate age
-    if (age && (age < 18 || age > 100)) {
+    // Check if adoption can be edited
+    if (!adoption.canBeEdited()) {
       return res.status(400).json({ 
         success: false, 
-        message: "You must be between 18 and 100 years old to adopt" 
+        message: "Only pending adoptions can be edited" 
+      });
+    }
+
+    // Enhanced validation for age
+    if (age !== undefined) {
+      const ageNum = Number(age);
+      if (isNaN(ageNum) || ageNum < 18 || ageNum > 100) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "You must be between 18 and 100 years old to adopt" 
+        });
+      }
+    }
+
+    // Validate name format
+    if (name && !/^[A-Za-z\s]+$/.test(name.trim())) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Name can only contain letters and spaces" 
       });
     }
 
     // Validate phone number
     const phoneRegex = /^(?:0|(?:\+94))7\d{8}$/;
-    if (req.body.phone && !phoneRegex.test(req.body.phone)) {
+    if (phone && !phoneRegex.test(phone)) {
       return res.status(400).json({ 
         success: false, 
-        message: "Please enter a valid Sri Lankan phone number" 
+        message: "Please enter a valid Sri Lankan phone number (07XXXXXXXX or +947XXXXXXXX)" 
       });
     }
 
@@ -262,17 +399,101 @@ export const editAdoption = async (req, res) => {
     if (emergencyContact && !phoneRegex.test(emergencyContact)) {
       return res.status(400).json({ 
         success: false, 
-        message: "Please enter a valid emergency contact number" 
+        message: "Please enter a valid emergency contact number (07XXXXXXXX or +947XXXXXXXX)" 
       });
     }
 
-    // Validate reason length
-    if (reason && reason.trim().length < 10) {
+    // Validate child option
+    if (child && !['no_child', 'below_5', 'above_5'].includes(child)) {
       return res.status(400).json({ 
         success: false, 
-        message: "Reason must be at least 10 characters long" 
+        message: "Child option must be no_child, below_5, or above_5" 
       });
     }
+
+    // Validate experience level
+    if (experience && !['none', 'beginner', 'intermediate', 'expert'].includes(experience)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Experience must be none, beginner, intermediate, or expert" 
+      });
+    }
+
+    // Validate living space
+    if (livingSpace && !['apartment', 'house', 'farm', 'other'].includes(livingSpace)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Living space must be apartment, house, farm, or other" 
+      });
+    }
+
+    // Validate other pets
+    if (otherPets && !['none', 'dogs', 'cats', 'other', 'multiple'].includes(otherPets)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Other pets must be none, dogs, cats, other, or multiple" 
+      });
+    }
+
+    // Validate time commitment
+    if (timeCommitment) {
+      const validTimeCommitments = ['part_time', 'full_time', 'weekends_only', 'flexible'];
+      if (!validTimeCommitments.includes(timeCommitment)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Time commitment must be one of: " + validTimeCommitments.join(', ') 
+        });
+      }
+    }
+
+    // Validate reason length
+    if (reason) {
+      if (reason.trim().length < 10) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Reason must be at least 10 characters long" 
+        });
+      }
+      if (reason.trim().length > 500) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Reason cannot exceed 500 characters" 
+        });
+      }
+    }
+
+    // Validate address length
+    if (address) {
+      if (address.trim().length < 5) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Address must be at least 5 characters long" 
+        });
+      }
+      if (address.trim().length > 200) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Address cannot exceed 200 characters" 
+        });
+      }
+    }
+
+    // Validate occupation
+    if (occupation) {
+      if (occupation.trim().length < 2) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Occupation must be at least 2 characters long" 
+        });
+      }
+      if (occupation.trim().length > 100) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Occupation cannot exceed 100 characters" 
+        });
+      }
+    }
+
 
     // Update allowed fields
     if (name) adoption.name = name.trim();
@@ -308,11 +529,19 @@ export const editAdoption = async (req, res) => {
   }
 };
 
-//delete adoption
+//delete adoption with enhanced validation
 export const deleteAdoption = async (req, res) => {
   try {
     const { adoptionId } = req.params;
     const userId = req.user.id;
+
+    // Validate adoption ID format
+    if (!mongoose.Types.ObjectId.isValid(adoptionId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid adoption ID format" 
+      });
+    }
 
     const adoption = await Adoption.findById(adoptionId);
     if (!adoption) {
@@ -323,11 +552,28 @@ export const deleteAdoption = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
+    // Check if adoption can be cancelled
+    if (!adoption.canBeCancelled()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Only pending or approved adoptions can be cancelled" 
+      });
+    }
+
+    // Make pet available again
     await Pet.findByIdAndUpdate(adoption.pet, { isAdopted: false });
 
     await adoption.deleteOne();
 
-    res.json({ success: true, message: "Adoption deleted successfully" });
+    res.json({ 
+      success: true, 
+      message: "Adoption cancelled successfully",
+      cancelledAdoption: {
+        id: adoption._id,
+        petId: adoption.pet,
+        status: adoption.status
+      }
+    });
   } catch (error) {
     console.error("Error deleting adoption:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
