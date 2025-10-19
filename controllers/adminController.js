@@ -257,34 +257,112 @@ export const addDoctor = async (req, res) => {
   }
 }
 
-// ✅ API for adding caretaker
+// API for updating doctor details
+export const updateDoctor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, password, speciality, degree, experience, about, address } = req.body;
+    const imageFile = req.file;
+
+    // find existing doctor
+    const doctor = await doctorModel.findById(id);
+    if (!doctor) {
+      return res.json({ success: false, message: "Doctor not found" });
+    }
+
+    // update fields if provided
+    if (name) doctor.name = name;
+    if (email) {
+      if (!validator.isEmail(email)) {
+        return res.json({ success: false, message: "Please enter a valid email" });
+      }
+      doctor.email = email.toLowerCase().trim();
+    }
+
+    if (password) {
+      if (password.length < 8) {
+        return res.json({ success: false, message: "Password must be at least 8 characters" });
+      }
+      const salt = await bcrypt.genSalt(10);
+      doctor.password = await bcrypt.hash(password, salt);
+    }
+
+    if (speciality) doctor.speciality = speciality;
+    if (degree) doctor.degree = degree;
+    if (experience) doctor.experience = experience;
+    if (about) doctor.about = about;
+    if (address) doctor.address = address;
+
+    // handle new image upload
+    if (imageFile) {
+      const fileBuffer = await fs.promises.readFile(imageFile.path);
+
+      const uploaded = await imageKit.upload({
+        file: fileBuffer,
+        fileName: imageFile.originalname,
+        folder: "/doctor",
+      });
+
+      doctor.image = uploaded.url;
+    }
+
+    await doctor.save();
+
+    res.json({ success: true, message: "Doctor updated successfully", doctor });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// API for deleting a doctor
+export const deleteDoctor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const doctor = await doctorModel.findById(id);
+    if (!doctor) {
+      return res.json({ success: false, message: "Doctor not found" });
+    }
+
+    await doctorModel.findByIdAndDelete(id);
+
+    res.json({ success: true, message: "Doctor deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+
+// API for adding caretaker
 export const addCareTaker = async (req, res) => {
   try {
     const { name, email, password, speciality, degree, experience, about, address } = req.body;
     const imageFile = req.file;
 
-    // ✅ Check for required fields
+    //  Check for required fields
     if (!name || !email || !password || !experience || !about || !address) {
       return res.json({ success: false, message: "Missing required details" });
     }
 
-    // ✅ Validate email
+    //  Validate email
     if (!validator.isEmail(email)) {
       return res.json({ success: false, message: "Please enter a valid email" });
     }
 
-    // ✅ Validate password strength
+    // Validate password strength
     if (password.length < 8) {
       return res.json({ success: false, message: "Please enter a stronger password (min 8 chars)" });
     }
 
-    // ✅ Hash password
+    //  Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     let imageUrl = "";
 
-    // ✅ Upload image to ImageKit if provided
+    //  Upload image to ImageKit if provided
     if (imageFile) {
       // read the uploaded image file
       const fileBuffer = await fs.promises.readFile(imageFile.path);
@@ -299,7 +377,7 @@ export const addCareTaker = async (req, res) => {
       imageUrl = uploaded.url;
     }
 
-    // ✅ Save new Caretaker to DB
+    //  Save new Caretaker to DB
     const careTakerData = {
       name,
       email,
@@ -317,6 +395,87 @@ export const addCareTaker = async (req, res) => {
 
     res.json({ success: true, message: "Care Taker added successfully" });
 
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// API for updating caretaker details
+export const updateCareTaker = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, password, speciality, degree, experience, about, address } = req.body;
+    const imageFile = req.file;
+
+    // Find caretaker
+    const careTaker = await careTakerModel.findById(id);
+    if (!careTaker) {
+      return res.json({ success: false, message: "Caretaker not found" });
+    }
+
+    // Update basic fields if provided
+    if (name) careTaker.name = name;
+
+    if (email) {
+      if (!validator.isEmail(email)) {
+        return res.json({ success: false, message: "Please enter a valid email" });
+      }
+      careTaker.email = email.toLowerCase().trim();
+    }
+
+    // Update password if given
+    if (password) {
+      if (password.length < 8) {
+        return res.json({ success: false, message: "Password must be at least 8 characters long" });
+      }
+      const salt = await bcrypt.genSalt(10);
+      careTaker.password = await bcrypt.hash(password, salt);
+    }
+
+    if (speciality) careTaker.speciality = speciality;
+    if (degree) careTaker.degree = degree;
+    if (experience) careTaker.experience = experience;
+    if (about) careTaker.about = about;
+    if (address) careTaker.address = address;
+
+    // Handle new image upload
+    if (imageFile) {
+      const fileBuffer = await fs.promises.readFile(imageFile.path);
+
+      const uploaded = await imageKit.upload({
+        file: fileBuffer,
+        fileName: imageFile.originalname,
+        folder: "/caretaker",
+      });
+
+      careTaker.image = uploaded.url;
+    }
+
+    // Save updates
+    await careTaker.save();
+
+    res.json({ success: true, message: "Caretaker updated successfully", careTaker });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+// API for deleting caretaker
+export const deleteCareTaker = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const careTaker = await careTakerModel.findById(id);
+    if (!careTaker) {
+      return res.json({ success: false, message: "Caretaker not found" });
+    }
+
+    await careTakerModel.findByIdAndDelete(id);
+
+    res.json({ success: true, message: "Caretaker deleted successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
