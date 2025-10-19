@@ -9,7 +9,7 @@ const ExtraSchema = new mongoose.Schema(
 const ItemSchema = new mongoose.Schema(
   {
     appointmentId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    service: { type: String, enum: ["vet", "grooming", "daycare"], required: true },
+    service: { type: String, enum: ["vet", "grooming", "daycare", "adoption"], required: true },
     title: String,
     date: String,
     time: String,
