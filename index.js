@@ -48,8 +48,19 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
 
+// Debug middleware
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.originalUrl} - ${new Date().toISOString()}`);
+  next();
+});
 
 //--------------------------- Route --------------------------//
+// Test route first
+app.get("/test", (req, res) => {
+  console.log("🧪 Test route accessed");
+  res.json({ message: "Test route working!", timestamp: new Date().toISOString() });
+});
+
 // Root route for deployment
 app.get("/", (req, res) => {
   console.log("🚀 Root route accessed:", req.originalUrl);
@@ -58,6 +69,8 @@ app.get("/", (req, res) => {
     status: "success",
     timestamp: new Date().toISOString(),
     endpoints: {
+      test: "/test",
+      health: "/health",
       vet: "/api/vet",
       grooming: "/api/grooming", 
       daycare: "/api/daycare",
