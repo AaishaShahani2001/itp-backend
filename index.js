@@ -130,10 +130,17 @@ app.use("*", (req, res) => {
   });
 });
 
-// Connect MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.log("❌ MongoDB connection error:", err));
+// Connect MongoDB (with error handling)
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => console.log("✅ MongoDB connected"))
+    .catch((err) => {
+      console.log("❌ MongoDB connection error:", err);
+      console.log("⚠️ Continuing without MongoDB for testing...");
+    });
+} else {
+  console.log("⚠️ MONGODB_URI not set, continuing without database...");
+}
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
