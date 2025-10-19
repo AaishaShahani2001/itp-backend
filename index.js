@@ -28,7 +28,12 @@ import paymentsRouter from "./routes/payments.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174", "https://itp-frontend.onrender.com",];
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "http://localhost:5174",
+  "https://itp-frontend.onrender.com",
+  "https://itp-adminpanel.onrender.com"
+];
 
 // ---------- Create uploads directory----------
 const slipsDir = path.join(__dirname, "uploads", "slips");
@@ -47,6 +52,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
 //--------------------------- Route --------------------------//
 // Root route for deployment
 app.get("/", (req, res) => {
+  console.log("🚀 Root route accessed:", req.originalUrl);
   res.json({
     message: "🚀 PetPulse Backend API is running!",
     status: "success",
@@ -117,4 +123,9 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch((err) => console.log("❌ MongoDB connection error:", err));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 CORS Origins: ${JSON.stringify(allowedOrigins)}`);
+  console.log(`✅ Root route available at: http://localhost:${PORT}/`);
+});
