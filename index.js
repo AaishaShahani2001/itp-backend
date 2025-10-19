@@ -28,7 +28,7 @@ import paymentsRouter from "./routes/payments.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const allowedOrigins = ["http://localhost:5173", "http://localhost:5174"];
+const allowedOrigins = ["http://localhost:5173", "http://localhost:5174", "https://itp-frontend.onrender.com",];
 
 // ---------- Create uploads directory----------
 const slipsDir = path.join(__dirname, "uploads", "slips");
