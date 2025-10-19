@@ -38,13 +38,13 @@ router.post(
         return res.status(400).json({ message: "Order must contain items" });
       }
 
-      // Normalize payload
+      // Normalize payload - handle both appointments and adoptions
       const items = order.items.map((it) => ({
         appointmentId: it.id,
-        service: it.service, // "grooming" | "daycare" | "vet"
+        service: it.service, // "grooming" | "daycare" | "vet" | "adoption"
         title: it.title,
-        date: it.date,
-        time: it.time,
+        date: it.date || new Date().toISOString().split('T')[0], // Default date for adoptions
+        time: it.time || "00:00", // Default time for adoptions
         basePrice: Number(it.basePrice || 0),
         extras: Array.isArray(it.extras)
           ? it.extras.map((e) => ({ name: e.name, price: Number(e.price || 0) }))
@@ -75,11 +75,24 @@ router.post(
         status: "verified", // 
       });
 
-      // immediately mark all appointments as PAID
+      // immediately mark all items as PAID (appointments or adoptions)
       await setPaymentStatusForItems(items, "paid");
 
+      // Determine response message based on service types
+      const hasAdoptions = items.some(item => item.service === "adoption");
+      const hasAppointments = items.some(item => ["vet", "grooming", "daycare"].includes(item.service));
+      
+      let message = "Slip uploaded successfully.";
+      if (hasAdoptions && hasAppointments) {
+        message += " Adoptions and appointments marked as PAID.";
+      } else if (hasAdoptions) {
+        message += " Adoptions marked as PAID.";
+      } else if (hasAppointments) {
+        message += " Appointments marked as PAID.";
+      }
+
       return res.status(201).json({
-        message: "Slip uploaded. Appointments marked as PAID.",
+        message,
         paymentId: payment._id,
       });
     } catch (err) {
