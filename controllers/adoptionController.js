@@ -591,7 +591,7 @@ export const getAdoptionById = async (req, res) => {
     }
 
     const adoption = await Adoption.findById(adoptionId)
-      .populate("pet", "species breed image price");
+      .populate("pet", "species breed image price gender color age weight goodWithKids goodWithPets diet medical born");
 
     if (!adoption) {
       return res.status(404).json({ success: false, message: "Adoption not found" });
