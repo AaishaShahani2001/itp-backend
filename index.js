@@ -36,8 +36,10 @@ const allowedOrigins = [
 ];
 
 // ---------- Create uploads directory----------
-const slipsDir = path.join(__dirname, "uploads", "slips");
-fs.mkdirSync(slipsDir, { recursive: true });
+const uploadsRoot = path.join(__dirname, "uploads");
+fs.mkdirSync(uploadsRoot, { recursive: true });
+fs.mkdirSync(path.join(uploadsRoot, "slips"), { recursive: true });
+fs.mkdirSync(path.join(uploadsRoot, "medical"), { recursive: true });
 
 //medical dir 
 const medicalDir = path.join(__dirname, "uploads", "medical");

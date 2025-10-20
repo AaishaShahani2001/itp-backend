@@ -4,6 +4,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import mongoose from "mongoose";
+import { fileURLToPath } from "url";
 import VetAppointment from "../models/VetAppointmentModel.js";
 import authUser from "../middleware/authUser.js";
 import { notifyStatusChange } from "../services/notify.js";
@@ -25,7 +26,11 @@ function assertObjectId(id) {
 }
 
 /* -------------------------------- Upload dir -------------------------------- */
-const MED_DIR = path.join(process.cwd(), "uploads", "medical");
+// Use a stable project root based on this file's location
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.join(__dirname, "..");
+const MED_DIR = path.join(PROJECT_ROOT, "uploads", "medical");
 if (!fs.existsSync(MED_DIR)) fs.mkdirSync(MED_DIR, { recursive: true });
 
 /* ------------------------------- Multer setup ------------------------------- */
@@ -116,7 +121,7 @@ router.get("/appointments", async (req, res, next) => {
 /* ---------------------- POST /api/vet/appointments (create) ---------------------- */
 router.post("/appointments", upload.single("medicalFile"), authUser, async (req, res, next) => {
   try {
-    const {id} = req.user;
+    const { id } = req.user;
     const {
       ownerName,
       ownerPhone,
@@ -162,7 +167,8 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
       throw err;
     }
 
-    const medicalFilePath = req.file ? `/uploads/medical/${req.file.filename}` : undefined;
+    // Store a relative, web-served path (no leading slash). URL = `${API_BASE}/${medicalFilePath}`
+    const medicalFilePath = req.file ? `uploads/medical/${req.file.filename}` : undefined;
 
     // Coerce price if present
     let priceNum = undefined;
@@ -202,7 +208,7 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
   }
 });
 
-/* ---------------------------- GET /api/vet/ (all) ---------------------------- */
+/* ---------------------------- GET /api/vet/ (my appointments) ---------------------------- */
 router.get("/", authUser, async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -214,7 +220,7 @@ router.get("/", authUser, async (req, res) => {
         .json({ success: false, message: "User ID is missing" });
     }
 
-    const appts = await VetAppointment.find({user: userId})
+    const appts = await VetAppointment.find({ user: userId })
       .sort({ dateISO: -1, timeSlotMinutes: -1, createdAt: -1 })
       .lean();
     res.status(200).json(appts);
@@ -224,7 +230,7 @@ router.get("/", authUser, async (req, res) => {
   }
 });
 
-/* ---------------------------- GET /api/vet/ (all) ---------------------------- */
+/* ---------------------------- GET /api/vet/all (all) ---------------------------- */
 router.get("/all", async (req, res) => {
   try {
     const appts = await VetAppointment.find()
@@ -245,7 +251,9 @@ router.get("/:id", async (req, res, next) => {
     const appt = await VetAppointment.findById(id).lean();
     if (!appt) return res.status(404).json({ error: "Appointment not found" });
     res.status(200).json({ ok: true, data: appt });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 /* -------- PUT /api/vet/:id (multipart-friendly update with conflict check) -------- */
@@ -326,7 +334,6 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
       update.status = status;
     }
 
-
     // Conflict check if date/slot changed
     const wantDate = update.dateISO ?? existing.dateISO;
     const wantSlot =
@@ -347,13 +354,14 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
 
     // Optional file replace
     if (req.file) {
-      const newPath = `/uploads/medical/${req.file.filename}`;
+      // store a relative, web-served path (no leading slash)
+      const newPath = `uploads/medical/${req.file.filename}`;
       update.medicalFilePath = newPath;
 
       const oldRel = existing.medicalFilePath;
-      if (oldRel && oldRel.startsWith("/uploads/medical/")) {
+      if (oldRel && oldRel.startsWith("uploads/medical/")) {
         try {
-          const oldAbs = path.join(process.cwd(), oldRel.replace(/^\//, ""));
+          const oldAbs = path.join(PROJECT_ROOT, oldRel);
           if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs);
         } catch (e) {
           console.warn("⚠️ Could not delete old medical file:", e.message);
@@ -432,6 +440,5 @@ router.patch("/:id/status", async (req, res, next) => {
     next(err);
   }
 });
-
 
 export default router;
