@@ -9,7 +9,7 @@ adoptionRouter.post('/create', authUser, upload.single('nicImage'), createAdopti
 adoptionRouter.get('/user', authUser, getUserAdoptions)
 adoptionRouter.put('/edit-adoption/:adoptionId', authUser, editAdoption)
 adoptionRouter.delete('/delete-adoption/:adoptionId', authUser, deleteAdoption)
-adoptionRouter.get('/details/:adoptionId', authUser, getAdoptionById)
+adoptionRouter.get('/details/:adoptionId', getAdoptionById)
 adoptionRouter.patch('/:id/pay', authUser, changePaymentStatus)
 
 export default adoptionRouter;
