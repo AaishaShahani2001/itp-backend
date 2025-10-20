@@ -41,9 +41,6 @@ fs.mkdirSync(uploadsRoot, { recursive: true });
 fs.mkdirSync(path.join(uploadsRoot, "slips"), { recursive: true });
 fs.mkdirSync(path.join(uploadsRoot, "medical"), { recursive: true });
 
-//medical dir 
-const medicalDir = path.join(__dirname, "uploads", "medical");
-fs.mkdirSync(medicalDir, { recursive: true });
 
 //Initializing express app
 const app = express();
