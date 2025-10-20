@@ -585,19 +585,22 @@ export const getAdoptionById = async (req, res) => {
   try {
     const { adoptionId } = req.params;
 
-    const adoption = await Adoption.findOne({
-      _id: adoptionId,
-      user: req.user.id, 
-    }).populate('pet');
-
-    if (!adoption) {
-      return res.status(404).json({ success: false, message: 'Adoption not found' });
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(adoptionId)) {
+      return res.status(400).json({ success: false, message: "Invalid adoption ID format" });
     }
 
-    res.status(200).json({ success: true, adoption });
+    const adoption = await Adoption.findById(adoptionId)
+      .populate("pet", "species breed image price");
+
+    if (!adoption) {
+      return res.status(404).json({ success: false, message: "Adoption not found" });
+    }
+
+    return res.status(200).json({ success: true, adoption });
   } catch (error) {
-    console.error('Get adoption error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Get adoption error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
