@@ -20,6 +20,6 @@ router.patch('/:id/stock', updateStock);// Update stock (increment/decrement)
 router.delete('/:id', deleteProduct);   // Delete product
 router.get('/near-expiry', getNearExpiryProducts);
 router.patch('/:id/discount', applyDiscount);
-router.patch('/:id/discount', setManualDiscount);
+router.patch('/:id/manual-discount', setManualDiscount);
 
 export default router;
