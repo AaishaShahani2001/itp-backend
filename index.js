@@ -36,8 +36,10 @@ const allowedOrigins = [
 ];
 
 // ---------- Create uploads directory----------
-const slipsDir = path.join(__dirname, "uploads", "slips");
-fs.mkdirSync(slipsDir, { recursive: true });
+const uploadsRoot = path.join(__dirname, "uploads");
+fs.mkdirSync(uploadsRoot, { recursive: true });
+fs.mkdirSync(path.join(uploadsRoot, "slips"), { recursive: true });
+fs.mkdirSync(path.join(uploadsRoot, "medical"), { recursive: true });
 
 //Initializing express app
 const app = express();
@@ -46,7 +48,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
+pp.use("/uploads", express.static(uploadsRoot));
 
 //--------------------------- Route --------------------------//
 // Root route for deployment
