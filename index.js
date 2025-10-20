@@ -96,24 +96,24 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sales', salesRoutes);
 
 // Catch-all route for undefined endpoints
-app.use("*", (req, res) => {
-  res.status(404).json({
-    message: "❌ Route not found",
-    status: "error",
-    requestedPath: req.originalUrl,
-    availableEndpoints: {
-      root: "/",
-      health: "/health",
-      vet: "/api/vet",
-      grooming: "/api/grooming", 
-      daycare: "/api/daycare",
-      adoption: "/api/adoption",
-      payments: "/api/payments",
-      admin: "/api/admin",
-      user: "/api/user"
-    }
-  });
-});
+// app.use("*", (req, res) => {
+//   res.status(404).json({
+//     message: "❌ Route not found",
+//     status: "error",
+//     requestedPath: req.originalUrl,
+//     availableEndpoints: {
+//       root: "/",
+//       health: "/health",
+//       vet: "/api/vet",
+//       grooming: "/api/grooming", 
+//       daycare: "/api/daycare",
+//       adoption: "/api/adoption",
+//       payments: "/api/payments",
+//       admin: "/api/admin",
+//       user: "/api/user"
+//     }
+//   });
+// });
 
 // Connect MongoDB (with error handling)
 if (process.env.MONGODB_URI) {
