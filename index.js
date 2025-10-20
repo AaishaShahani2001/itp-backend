@@ -41,6 +41,10 @@ fs.mkdirSync(uploadsRoot, { recursive: true });
 fs.mkdirSync(path.join(uploadsRoot, "slips"), { recursive: true });
 fs.mkdirSync(path.join(uploadsRoot, "medical"), { recursive: true });
 
+//medical dir 
+const medicalDir = path.join(__dirname, "uploads", "medical");
+fs.mkdirSync(medicalDir, { recursive: true });
+
 //Initializing express app
 const app = express();
 
@@ -48,7 +52,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-pp.use("/uploads", express.static(uploadsRoot));
+app.use("/uploads", express.static(path.join(__dirname, "uploads", "medical")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
 
 //--------------------------- Route --------------------------//
 // Root route for deployment
@@ -98,24 +103,24 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/sales', salesRoutes);
 
 // Catch-all route for undefined endpoints
-app.use("*", (req, res) => {
-  res.status(404).json({
-    message: "❌ Route not found",
-    status: "error",
-    requestedPath: req.originalUrl,
-    availableEndpoints: {
-      root: "/",
-      health: "/health",
-      vet: "/api/vet",
-      grooming: "/api/grooming", 
-      daycare: "/api/daycare",
-      adoption: "/api/adoption",
-      payments: "/api/payments",
-      admin: "/api/admin",
-      user: "/api/user"
-    }
-  });
-});
+// app.use("*", (req, res) => {
+//   res.status(404).json({
+//     message: "❌ Route not found",
+//     status: "error",
+//     requestedPath: req.originalUrl,
+//     availableEndpoints: {
+//       root: "/",
+//       health: "/health",
+//       vet: "/api/vet",
+//       grooming: "/api/grooming", 
+//       daycare: "/api/daycare",
+//       adoption: "/api/adoption",
+//       payments: "/api/payments",
+//       admin: "/api/admin",
+//       user: "/api/user"
+//     }
+//   });
+// });
 
 // Connect MongoDB (with error handling)
 if (process.env.MONGODB_URI) {
