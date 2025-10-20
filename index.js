@@ -39,6 +39,10 @@ const allowedOrigins = [
 const slipsDir = path.join(__dirname, "uploads", "slips");
 fs.mkdirSync(slipsDir, { recursive: true });
 
+//medical dir 
+const medicalDir = path.join(__dirname, "uploads", "medical");
+fs.mkdirSync(medicalDir, { recursive: true });
+
 //Initializing express app
 const app = express();
 
@@ -46,6 +50,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: allowedOrigins, credentials: true }));
+pp.use("/uploads/medical", express.static(medicalDir));
 app.use("/uploads", express.static(path.join(__dirname, "uploads", "slips")));
 
 //--------------------------- Route --------------------------//
