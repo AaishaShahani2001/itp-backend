@@ -353,12 +353,12 @@ export const addCareTaker = async (req, res) => {
     const { name, email, password, speciality, degree, experience, about, address } = req.body;
     const imageFile = req.file;
 
-    //  Check for required fields
+    // Check for required fields
     if (!name || !email || !password || !experience || !about || !address) {
       return res.json({ success: false, message: "Missing required details" });
     }
 
-    //  Validate email
+    // Validate email
     if (!validator.isEmail(email)) {
       return res.json({ success: false, message: "Please enter a valid email" });
     }
@@ -368,13 +368,13 @@ export const addCareTaker = async (req, res) => {
       return res.json({ success: false, message: "Please enter a stronger password (min 8 chars)" });
     }
 
-    //  Hash password
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
     let imageUrl = "";
 
-    //  Upload image to ImageKit if provided
+    // Upload image to ImageKit if provided
     if (imageFile) {
       // read the uploaded image file
       const fileBuffer = await fs.promises.readFile(imageFile.path);
@@ -389,7 +389,7 @@ export const addCareTaker = async (req, res) => {
       imageUrl = uploaded.url;
     }
 
-    //  Save new Caretaker to DB
+    // Save new Caretaker to DB
     const careTakerData = {
       name,
       email,
