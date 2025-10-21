@@ -575,3 +575,25 @@ export const deleteReview = async (req, res) => {
     });
   }
 };
+
+    // LIST DOCTORS 
+export const listDoctors = async (req, res) => {
+  try {
+    const doctors = await doctorModel.find().select('-password');
+    res.json({ success: true, doctors });
+  } catch (error) {
+    console.error('List doctors error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+//  LIST CARETAKERS 
+export const listCaretakers = async (req, res) => {
+  try {
+    const caretakers = await careTakerModel.find().select('-password');
+    res.json({ success: true, caretakers });
+  } catch (error) {
+    console.error('List caretakers error:', error.message);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
