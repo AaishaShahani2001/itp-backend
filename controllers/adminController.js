@@ -5,7 +5,6 @@ import Review from "../models/Review.js";
 import Notification from "../models/Notification.js";
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
-import bcrypt from 'bcrypt'
 import validator from "validator";
 import imageKit from "../configs/imageKit.js";
 import careTakerModel from "../models/careTakerModel.js";
@@ -220,9 +219,6 @@ export const addDoctor = async (req, res) => {
       
     }
 
-    // hashing doctor password
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(password, salt)
 
     let imageUrl = "";
 
@@ -245,14 +241,14 @@ export const addDoctor = async (req, res) => {
     const doctorData = {
       name,
       email: email.toLowerCase().trim(),
-      image:imageUrl,
-      password:hashedPassword,
+      image: imageUrl,
+      password: password,
       speciality,
       degree,
       experience,
       about,
       address, // standardized to string in model
-      date:Date.now()
+      date: Date.now()
     }
 
     const newDoctor = new doctorModel(doctorData)
@@ -295,8 +291,7 @@ export const updateDoctor = async (req, res) => {
       if (password.length < 8) {
         return res.json({ success: false, message: "Password must be at least 8 characters" });
       }
-      const salt = await bcrypt.genSalt(10);
-      doctor.password = await bcrypt.hash(password, salt);
+      doctor.password = password;
     }
 
     if (speciality) doctor.speciality = speciality;
@@ -368,9 +363,6 @@ export const addCareTaker = async (req, res) => {
       return res.json({ success: false, message: "Please enter a stronger password (min 8 chars)" });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
 
     let imageUrl = "";
 
@@ -393,7 +385,7 @@ export const addCareTaker = async (req, res) => {
     const careTakerData = {
       name,
       email,
-      password: hashedPassword,
+      password: password,
       speciality,
       degree,
       experience,
@@ -441,8 +433,7 @@ export const updateCareTaker = async (req, res) => {
       if (password.length < 8) {
         return res.json({ success: false, message: "Password must be at least 8 characters long" });
       }
-      const salt = await bcrypt.genSalt(10);
-      careTaker.password = await bcrypt.hash(password, salt);
+      careTaker.password = password;
     }
 
     if (speciality) careTaker.speciality = speciality;
