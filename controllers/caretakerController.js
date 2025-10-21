@@ -1,9 +1,10 @@
 import express from 'express';
-import mongoose from 'mongoose'; // Add mongoose import
+import mongoose from 'mongoose';
 import imageKit from "../configs/imageKit.js";
 import Pet from "../models/Pet.js";
 import User from "../models/User.js";
-import { promises as fs } from "fs";   // ✅ correct import
+import careTakerModel from "../models/careTakerModel.js";
+import { promises as fs } from "fs";
 import jwt from 'jsonwebtoken';
 
 //API to add pets
