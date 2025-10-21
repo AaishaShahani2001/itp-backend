@@ -1,15 +1,11 @@
 // routes/vetRoute.js
 import express from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import mongoose from "mongoose";
-import { fileURLToPath } from "url";
 import VetAppointment from "../models/VetAppointmentModel.js";
 import authUser from "../middleware/authUser.js";
 import { notifyStatusChange } from "../services/notify.js";
 import imageKit from "../configs/imageKit.js";
-import { promises as fsPromises } from "fs";
 
 const router = express.Router();
 
@@ -32,7 +28,7 @@ const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const ok = ["application/pdf", "image/jpeg", "image/png"].includes(file.mimetype);
-  if (!ok) return cb(new Error("Only PDF, JPG, or PNG is allowed"));
+  if (!ok) return cb(new Error("Only JPEG, JPG, or PNG is allowed"));
   cb(null, true);
 };
 
@@ -69,7 +65,7 @@ function assertDateISO(ymd) {
 }
 
 /* ------------------- GET /api/vet/appointments (calendar) ------------------- */
-/** Returns items for the calendar (filters out rejected/cancelled) */
+/** Returns items for the calendar (filters out rejected/cancelled), now with startMinutes for UI disabling */
 router.get("/appointments", async (req, res, next) => {
   try {
     const { date } = req.query;
@@ -81,7 +77,6 @@ router.get("/appointments", async (req, res, next) => {
       .sort({ timeSlotMinutes: 1 })
       .lean();
 
-    // Hide rejected/cancelled
     const filtered = rows.filter(
       (r) => !["rejected", "cancelled"].includes(String(r.status || r.state || "").toLowerCase())
     );
@@ -91,7 +86,7 @@ router.get("/appointments", async (req, res, next) => {
       date: a.dateISO,
       start: toHHMM(a.timeSlotMinutes),
       end: toHHMM((a.timeSlotMinutes || 0) + (a.durationMin || 30)),
-      title: `${a.petType || "Pet"} • ${a.packageName || a.packageId || a.selectedService || "Vet"}`,
+      startMinutes: a.timeSlotMinutes, // <--- added for client to disable taken slots
       service: "vet",
       status: a.status || a.state || "pending",
     }));
@@ -146,37 +141,26 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
     // Conflict check
     const exists = await VetAppointment.findOne({ dateISO, timeSlotMinutes: slot }).lean();
     if (exists) {
-      const err = new Error("That time slot is already booked.");
+      const err = new Error("This time slot is already booked. Please choose another.");
       err.status = 409;
       throw err;
     }
 
-    // Store a relative, web-served path (no leading slash). URL = `${API_BASE}/${medicalFilePath}`
+    // Upload to ImageKit (optional)
     let medicalFilePath = undefined;
     if (req.file) {
       try {
-        console.log("📁 Uploading medical file to ImageKit:", req.file.originalname);
-        
         const uploadResponse = await imageKit.upload({
           file: req.file.buffer,
           fileName: req.file.originalname,
-          folder: '/medical'
+          folder: "/medical",
         });
-        
-        console.log("✅ ImageKit upload successful:", uploadResponse);
-        
-        // Get optimized URL
+
         medicalFilePath = imageKit.url({
           path: uploadResponse.filePath,
-          transformation: [
-            { width: "1280" },
-            { quality: "80" }
-          ]
+          transformation: [{ width: "1280" }, { quality: "80" }],
         });
-        
-        console.log("🔗 Medical file URL:", medicalFilePath);
       } catch (uploadError) {
-        console.error("❌ ImageKit upload failed:", uploadError);
         const err = new Error("Medical file upload failed");
         err.status = 500;
         throw err;
@@ -208,7 +192,6 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
       selectedPrice: priceNum,
       notes,
       medicalFilePath,
-      // status default from schema
     });
 
     res.status(201).json({ ok: true, id: doc._id, message: "Appointment created" });
@@ -225,12 +208,8 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
 router.get("/", authUser, async (req, res) => {
   try {
     const userId = req.user?.id;
-
     if (!userId) {
-      console.log("User ID missing, req.user:", req.user);
-      return res
-        .status(400)
-        .json({ success: false, message: "User ID is missing" });
+      return res.status(400).json({ success: false, message: "User ID is missing" });
     }
 
     const appts = await VetAppointment.find({ user: userId })
@@ -238,7 +217,6 @@ router.get("/", authUser, async (req, res) => {
       .lean();
     res.status(200).json(appts);
   } catch (error) {
-    console.error("❌ Fetching Appointments error:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -251,7 +229,6 @@ router.get("/all", async (req, res) => {
       .lean();
     res.status(200).json(appts);
   } catch (error) {
-    console.error("❌ Fetching Appointments error:", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -292,25 +269,23 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
       status,
     } = req.body;
 
-    /* ------------------ ENFORCE REASON LOCK (server-side) ------------------ */
+    // Enforce reason lock
     if (typeof reason === "string" && reason.trim() !== (existing.reason || "").trim()) {
       const err = new Error("Reason cannot be changed after booking. Please create a new booking.");
       err.status = 400;
       throw err;
     }
 
-    /* -------------------------- Build safe update -------------------------- */
     const update = {};
     if (typeof ownerName === "string") update.ownerName = ownerName.trim();
     if (typeof ownerPhone === "string") update.ownerPhone = ownerPhone.trim();
     if (typeof ownerEmail === "string") update.ownerEmail = ownerEmail.trim();
     if (typeof petType === "string") update.petType = petType;
     if (typeof petSize === "string") update.petSize = petSize;
-    // reason is locked – do NOT set it
 
     if (typeof dateISO === "string" && dateISO !== "") {
       assertDateISO(dateISO);
-      update.dateISO = dateISO; // keep literal YYYY-MM-DD
+      update.dateISO = dateISO;
     }
 
     if (typeof timeSlotMinutes !== "undefined" && timeSlotMinutes !== "") {
@@ -324,7 +299,6 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
     }
 
     if (typeof notes === "string") update.notes = notes;
-
     if (typeof selectedService === "string") update.selectedService = selectedService;
 
     if (typeof selectedPrice !== "undefined" && selectedPrice !== "") {
@@ -354,12 +328,12 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
 
     if (wantDate && typeof wantSlot === "number") {
       const conflict = await VetAppointment.findOne({
-        _id: { $ne: existing._id }, // use real ObjectId
+        _id: { $ne: existing._id },
         dateISO: wantDate,
         timeSlotMinutes: wantSlot,
       }).lean();
       if (conflict) {
-        const err = new Error("That time slot is already booked.");
+        const err = new Error("This time slot is already booked. Please choose another.");
         err.status = 409;
         throw err;
       }
@@ -368,33 +342,19 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
     // Optional file replace
     if (req.file) {
       try {
-        console.log("📁 Updating medical file in ImageKit:", req.file.originalname);
-        
         const uploadResponse = await imageKit.upload({
           file: req.file.buffer,
           fileName: req.file.originalname,
-          folder: '/medical'
+          folder: "/medical",
         });
-        
-        console.log("✅ ImageKit update successful:", uploadResponse);
-        
-        // Get optimized URL
+
         const newMedicalFilePath = imageKit.url({
           path: uploadResponse.filePath,
-          transformation: [
-            { width: "1280" },
-            { quality: "80" }
-          ]
+          transformation: [{ width: "1280" }, { quality: "80" }],
         });
-        
+
         update.medicalFilePath = newMedicalFilePath;
-        console.log("🔗 Updated medical file URL:", newMedicalFilePath);
-        
-        // Note: Old ImageKit files are automatically managed by ImageKit
-        // No need to manually delete them
-        
       } catch (uploadError) {
-        console.error("❌ ImageKit update failed:", uploadError);
         const err = new Error("Medical file update failed");
         err.status = 500;
         throw err;
@@ -439,27 +399,20 @@ router.patch("/:id/status", async (req, res, next) => {
       return res.status(400).json({ message: "Invalid status" });
     }
 
-    // Update (and store rejection reason/doctor if provided)
     const update = { status };
     if (status === "rejected") update.rejectionReason = (rejectionReason || "").trim();
     if (doctorName) update.doctorName = String(doctorName).trim();
 
-    const updated = await VetAppointment.findByIdAndUpdate(
-      req.params.id,
-      update,
-      { new: true }
-    ).lean();
-
+    const updated = await VetAppointment.findByIdAndUpdate(req.params.id, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ message: "Not found" });
 
-    // Fire SMS (non-blocking for UX, but we still await here to surface result)
     let notify = { ok: false, error: null, to: updated.ownerPhone || updated.phone || null };
     try {
       await notifyStatusChange({
         serviceType: "vet",
-        appt: updated,                        // must contain ownerPhone/ownerName/dateISO/timeSlotMinutes
+        appt: updated,
         newStatus: status,
-        caretakerName: doctorName || "Doctor"
+        caretakerName: doctorName || "Doctor",
       });
       notify.ok = true;
     } catch (e) {
