@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import careTakerModel from "../models/careTakerModel.js";
 import { promises as fs } from "fs";
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt'
 
 //API to add pets
 export const addPet = async (req, res) => {
