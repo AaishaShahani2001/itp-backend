@@ -1,7 +1,7 @@
 // routes/vetRoute.js
 import express from "express";
 import multer from "multer";
-import path from "path";
+import path from "path";5
 import fs from "fs";
 import mongoose from "mongoose";
 import { fileURLToPath } from "url";
