@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import doctorModel from '../models/doctorModel.js';
+import bcrypt from 'bcrypt'
 
 // API for doctor login (DB-backed)
 export const loginDoctor = async (req, res) => {
