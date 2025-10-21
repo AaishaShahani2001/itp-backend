@@ -205,7 +205,7 @@ router.put("/:id", async (req, res, next) => {
 
     const update = {
       ...req.body,
-      dateISO: nextDateISO, // keep as plain string
+      dateISO: nextDateISO, 
       dropOffMinutes: nextDrop,
       pickUpMinutes: nextPick,
     };
