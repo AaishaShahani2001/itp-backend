@@ -9,6 +9,7 @@ import validator from "validator";
 import imageKit from "../configs/imageKit.js";
 import careTakerModel from "../models/careTakerModel.js";
 import doctorModel from "../models/doctorModel.js";
+import bcrypt from 'bcrypt'
 
 //API to list pets
 export const getPets = async (req, res) => {
@@ -219,6 +220,9 @@ export const addDoctor = async (req, res) => {
       
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     let imageUrl = "";
 
@@ -242,7 +246,7 @@ export const addDoctor = async (req, res) => {
       name,
       email: email.toLowerCase().trim(),
       image: imageUrl,
-      password: password,
+      password: hashedPassword,
       speciality,
       degree,
       experience,
@@ -291,7 +295,8 @@ export const updateDoctor = async (req, res) => {
       if (password.length < 8) {
         return res.json({ success: false, message: "Password must be at least 8 characters" });
       }
-      doctor.password = password;
+      const salt = await bcrypt.genSalt(10);
+      doctor.password = await bcrypt.hash(password, salt);
     }
 
     if (speciality) doctor.speciality = speciality;
@@ -363,6 +368,9 @@ export const addCareTaker = async (req, res) => {
       return res.json({ success: false, message: "Please enter a stronger password (min 8 chars)" });
     }
 
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     let imageUrl = "";
 
@@ -385,7 +393,7 @@ export const addCareTaker = async (req, res) => {
     const careTakerData = {
       name,
       email,
-      password: password,
+      password: hashedPassword,
       speciality,
       degree,
       experience,
@@ -433,7 +441,8 @@ export const updateCareTaker = async (req, res) => {
       if (password.length < 8) {
         return res.json({ success: false, message: "Password must be at least 8 characters long" });
       }
-      careTaker.password = password;
+      const salt = await bcrypt.genSalt(10);
+      careTaker.password = await bcrypt.hash(password, salt);;
     }
 
     if (speciality) careTaker.speciality = speciality;
