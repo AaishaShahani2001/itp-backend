@@ -258,12 +258,13 @@ export const getPets = async (req, res) => {
       maxPrice,
       goodWithKids,
       goodWithPets,
+      isAdopted,
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
 
     // Build filter object
-    const filter = { isAdopted: false };
+    const filter = { };
     
     if (species) filter.species = new RegExp(species, 'i');
     if (breed) filter.breed = new RegExp(breed, 'i');
@@ -291,7 +292,7 @@ export const getPets = async (req, res) => {
 
     // Execute query
     const pets = await Pet.find(filter)
-      .select('_id species breed gender color diet medical age price born weight goodWithKids goodWithPets image createdAt')
+      .select('_id species breed gender color diet medical age price born weight goodWithKids goodWithPets isAdopted image createdAt')
       .sort(sort);
 
     if (!pets || pets.length === 0) {
