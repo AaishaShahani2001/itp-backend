@@ -267,6 +267,7 @@ export const addDoctor = async (req, res) => {
     console.log(error)
     res.json({success:false,message:error.message})
   }
+};
 
 // API for updating doctor details
 export const updateDoctor = async (req, res) => {
