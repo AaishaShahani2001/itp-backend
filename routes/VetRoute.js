@@ -8,6 +8,8 @@ import { fileURLToPath } from "url";
 import VetAppointment from "../models/VetAppointmentModel.js";
 import authUser from "../middleware/authUser.js";
 import { notifyStatusChange } from "../services/notify.js";
+import imageKit from "../configs/imageKit.js";
+import { promises as fsPromises } from "fs";
 
 const router = express.Router();
 
@@ -27,24 +29,14 @@ function assertObjectId(id) {
 
 /* -------------------------------- Upload dir -------------------------------- */
 // Use a stable project root based on this file's location
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PROJECT_ROOT = path.join(__dirname, "..");
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
+// const PROJECT_ROOT = path.join(__dirname, "..");
 const MED_DIR = path.join(PROJECT_ROOT, "uploads", "medical");
 if (!fs.existsSync(MED_DIR)) fs.mkdirSync(MED_DIR, { recursive: true });
 
 /* ------------------------------- Multer setup ------------------------------- */
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, MED_DIR),
-  filename: (req, file, cb) => {
-    const safeBase = path
-      .basename(file.originalname)
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9._-]/g, "");
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}-${safeBase}`);
-  },
-});
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   const ok = ["application/pdf", "image/jpeg", "image/png"].includes(file.mimetype);
@@ -168,7 +160,36 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
     }
 
     // Store a relative, web-served path (no leading slash). URL = `${API_BASE}/${medicalFilePath}`
-    const medicalFilePath = req.file ? `uploads/medical/${req.file.filename}` : undefined;
+    let medicalFilePath = undefined;
+    if (req.file) {
+      try {
+        console.log("📁 Uploading medical file to ImageKit:", req.file.originalname);
+        
+        const uploadResponse = await imageKit.upload({
+          file: req.file.buffer,
+          fileName: req.file.originalname,
+          folder: '/medical'
+        });
+        
+        console.log("✅ ImageKit upload successful:", uploadResponse);
+        
+        // Get optimized URL
+        medicalFilePath = imageKit.url({
+          path: uploadResponse.filePath,
+          transformation: [
+            { width: "1280" },
+            { quality: "80" }
+          ]
+        });
+        
+        console.log("🔗 Medical file URL:", medicalFilePath);
+      } catch (uploadError) {
+        console.error("❌ ImageKit upload failed:", uploadError);
+        const err = new Error("Medical file upload failed");
+        err.status = 500;
+        throw err;
+      }
+    }
 
     // Coerce price if present
     let priceNum = undefined;
@@ -354,18 +375,37 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
 
     // Optional file replace
     if (req.file) {
-      // store a relative, web-served path (no leading slash)
-      const newPath = `uploads/medical/${req.file.filename}`;
-      update.medicalFilePath = newPath;
-
-      const oldRel = existing.medicalFilePath;
-      if (oldRel && oldRel.startsWith("uploads/medical/")) {
-        try {
-          const oldAbs = path.join(PROJECT_ROOT, oldRel);
-          if (fs.existsSync(oldAbs)) fs.unlinkSync(oldAbs);
-        } catch (e) {
-          console.warn("⚠️ Could not delete old medical file:", e.message);
-        }
+      try {
+        console.log("📁 Updating medical file in ImageKit:", req.file.originalname);
+        
+        const uploadResponse = await imageKit.upload({
+          file: req.file.buffer,
+          fileName: req.file.originalname,
+          folder: '/medical'
+        });
+        
+        console.log("✅ ImageKit update successful:", uploadResponse);
+        
+        // Get optimized URL
+        const newMedicalFilePath = imageKit.url({
+          path: uploadResponse.filePath,
+          transformation: [
+            { width: "1280" },
+            { quality: "80" }
+          ]
+        });
+        
+        update.medicalFilePath = newMedicalFilePath;
+        console.log("🔗 Updated medical file URL:", newMedicalFilePath);
+        
+        // Note: Old ImageKit files are automatically managed by ImageKit
+        // No need to manually delete them
+        
+      } catch (uploadError) {
+        console.error("❌ ImageKit update failed:", uploadError);
+        const err = new Error("Medical file update failed");
+        err.status = 500;
+        throw err;
       }
     }
 
