@@ -27,14 +27,6 @@ function assertObjectId(id) {
   }
 }
 
-/* -------------------------------- Upload dir -------------------------------- */
-// Use a stable project root based on this file's location
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-// const PROJECT_ROOT = path.join(__dirname, "..");
-const MED_DIR = path.join(PROJECT_ROOT, "uploads", "medical");
-if (!fs.existsSync(MED_DIR)) fs.mkdirSync(MED_DIR, { recursive: true });
-
 /* ------------------------------- Multer setup ------------------------------- */
 const storage = multer.memoryStorage();
 
