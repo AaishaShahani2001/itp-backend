@@ -749,20 +749,25 @@ export const updateUserImage = async (req, res)=>{
 //API for caretaker login
 export const loginCaretaker = async (req, res) => {
   try {
-    const {email, password} = req.body;
-
-    if (email === process.env.CARETAKER_EMAIL && password === process.env.CARETAKER_PASSWORD) {
-
-      const token = jwt.sign(email+password, process.env.JWT_SECRET)
-      res.json({success: true, token})
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.json({ success: false, message: 'Email and password are required' });
     }
 
-    else {
-      res.json({success: false, message: "Invalid credentials."})
+    const ct = await careTakerModel.findOne({ email: email.toLowerCase().trim() });
+    if (!ct) {
+      return res.json({ success: false, message: 'Account not found' });
     }
-    
+
+    const ok = await bcrypt.compare(password, ct.password);
+    if (!ok) {
+      return res.json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ id: ct._id, role: 'caretaker' }, process.env.JWT_SECRET);
+    return res.json({ success: true, token });
   } catch (error) {
     console.log(error.message);
-    res.json({success: false, message: error.message})
+    res.json({ success: false, message: error.message });
   }
 }
