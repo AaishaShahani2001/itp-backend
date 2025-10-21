@@ -263,7 +263,7 @@ export const getPets = async (req, res) => {
     } = req.query;
 
     // Build filter object
-    const filter = { isAdopted: false };
+    const filter = { };
     
     if (species) filter.species = new RegExp(species, 'i');
     if (breed) filter.breed = new RegExp(breed, 'i');
