@@ -26,9 +26,14 @@ function assertObjectId(id) {
 /* ------------------------------- Multer setup ------------------------------- */
 const storage = multer.memoryStorage();
 
+// ✅ Only allow images; reject PDFs with the requested message
 const fileFilter = (req, file, cb) => {
-  const ok = ["application/pdf", "image/jpeg", "image/png"].includes(file.mimetype);
-  if (!ok) return cb(new Error("Only JPEG, JPG, or PNG is allowed"));
+  const ok = ["image/jpeg", "image/png"].includes(file.mimetype); // jpg/jpeg share image/jpeg
+  if (!ok) {
+    const err = new Error("Please upload PNG, JPG or JPEG medical file.");
+    err.status = 400;
+    return cb(err);
+  }
   cb(null, true);
 };
 
@@ -65,7 +70,6 @@ function assertDateISO(ymd) {
 }
 
 /* ------------------- GET /api/vet/appointments (calendar) ------------------- */
-/** Returns items for the calendar (filters out rejected/cancelled), now with startMinutes for UI disabling */
 router.get("/appointments", async (req, res, next) => {
   try {
     const { date } = req.query;
@@ -86,7 +90,7 @@ router.get("/appointments", async (req, res, next) => {
       date: a.dateISO,
       start: toHHMM(a.timeSlotMinutes),
       end: toHHMM((a.timeSlotMinutes || 0) + (a.durationMin || 30)),
-      startMinutes: a.timeSlotMinutes, // <--- added for client to disable taken slots
+      startMinutes: a.timeSlotMinutes, // for client-side disabling
       service: "vet",
       status: a.status || a.state || "pending",
     }));
@@ -160,7 +164,7 @@ router.post("/appointments", upload.single("medicalFile"), authUser, async (req,
           path: uploadResponse.filePath,
           transformation: [{ width: "1280" }, { quality: "80" }],
         });
-      } catch (uploadError) {
+      } catch {
         const err = new Error("Medical file upload failed");
         err.status = 500;
         throw err;
@@ -227,7 +231,7 @@ router.get("/all", async (req, res) => {
     const appts = await VetAppointment.find()
       .sort({ dateISO: -1, timeSlotMinutes: -1, createdAt: -1 })
       .lean();
-    res.status(200).json(appts);
+  res.status(200).json(appts);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -269,7 +273,6 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
       status,
     } = req.body;
 
-    // Enforce reason lock
     if (typeof reason === "string" && reason.trim() !== (existing.reason || "").trim()) {
       const err = new Error("Reason cannot be changed after booking. Please create a new booking.");
       err.status = 400;
@@ -339,7 +342,7 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
       }
     }
 
-    // Optional file replace
+    // Optional file replace (still only images)
     if (req.file) {
       try {
         const uploadResponse = await imageKit.upload({
@@ -354,7 +357,7 @@ router.put("/:id", maybeUpload, async (req, res, next) => {
         });
 
         update.medicalFilePath = newMedicalFilePath;
-      } catch (uploadError) {
+      } catch {
         const err = new Error("Medical file update failed");
         err.status = 500;
         throw err;
@@ -388,7 +391,7 @@ router.delete("/:id", async (req, res, next) => {
   }
 });
 
-/* ------------- PATCH /api/vet/:id/status  {status, doctorName?, rejectionReason?} ------------- */
+/* ------------- PATCH /api/vet/:id/status  ------------- */
 router.patch("/:id/status", async (req, res, next) => {
   try {
     assertObjectId(req.params.id);
@@ -417,7 +420,6 @@ router.patch("/:id/status", async (req, res, next) => {
       notify.ok = true;
     } catch (e) {
       notify.error = e?.message || String(e);
-      console.error("[notifyStatusChange] failed:", notify.error);
     }
 
     return res.json({ ok: true, item: updated, notify });
