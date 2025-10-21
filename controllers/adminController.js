@@ -10,7 +10,6 @@ import validator from "validator";
 import imageKit from "../configs/imageKit.js";
 import careTakerModel from "../models/careTakerModel.js";
 import doctorModel from "../models/doctorModel.js";
-import cloudinary from 'cloudinary';
 
 //API to list pets
 export const getPets = async (req, res) => {
