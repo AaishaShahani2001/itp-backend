@@ -363,9 +363,19 @@ export const addCareTaker = async (req, res) => {
       return res.json({ success: false, message: "Please enter a valid email" });
     }
 
-    // Validate password strength
-    if (password.length < 8) {
-      return res.json({ success: false, message: "Please enter a stronger password (min 8 chars)" });
+    // Validate password strength - match frontend validation
+    const passwordPattern = /^(?=.[a-z])(?=.[A-Z])(?=.\d)(?=.[@$!%?&])[A-Za-z\d@$!%?&]{8,}$/;
+    if (!passwordPattern.test(password)) {
+      return res.json({ 
+        success: false, 
+        message: "Password must have 8+ chars, incl. uppercase, lowercase, number & special symbol." 
+      });
+    }
+
+    // Check if email already exists
+    const existingCaretaker = await careTakerModel.findOne({ email: email.toLowerCase().trim() });
+    if (existingCaretaker) {
+      return res.json({ success: false, message: "Caretaker with this email already exists" });
     }
 
     // Hash password
