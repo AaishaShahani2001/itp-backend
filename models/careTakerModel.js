@@ -16,6 +16,6 @@ const careTakerSchema = new mongoose.Schema({
 
 },{minimize:false})
 
-const careTakerModel = mongoose.models.caretaker|| mongoose.model('doctor', careTakerSchema)
+const careTakerModel = mongoose.models.caretaker|| mongoose.model('caretaker', careTakerSchema)
 
 export default careTakerModel
