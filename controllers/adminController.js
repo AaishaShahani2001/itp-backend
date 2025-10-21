@@ -225,21 +225,34 @@ export const addDoctor = async (req, res) => {
     const salt = await bcrypt.genSalt(10)
     const hashedPassword = await bcrypt.hash(password, salt)
 
-    //upload image to cloudinary
-    const imageUpload = await cloudinary.uploader.upload(imageFile.path, {resource_type: "image"})
-    const imageUrl = imageUpload.secure_url
+    let imageUrl = "";
+
+    // Upload image to ImageKit if provided
+    if (imageFile) {
+      // read the uploaded image file
+      const fileBuffer = await fs.promises.readFile(imageFile.path);
+
+      // upload to ImageKit
+      const uploaded = await imageKit.upload({
+        file: fileBuffer, // required
+        fileName: imageFile.originalname,
+        folder: "/doctor",
+      })
+
+      imageUrl = uploaded.url;
+    }
 
 
     const doctorData = {
       name,
-      email,
+      email: email.toLowerCase().trim(),
       image:imageUrl,
       password:hashedPassword,
       speciality,
       degree,
       experience,
       about,
-      address:JSON.parse(address),
+      address, // standardized to string in model
       date:Date.now()
     }
 
@@ -255,7 +268,6 @@ export const addDoctor = async (req, res) => {
     console.log(error)
     res.json({success:false,message:error.message})
   }
-}
 
 // API for updating doctor details
 export const updateDoctor = async (req, res) => {
