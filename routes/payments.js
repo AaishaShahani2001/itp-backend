@@ -11,9 +11,6 @@ const router = express.Router();
 
 /**
  * POST /api/payments/upload-slip
- * - Accepts a multipart form with:
- *   - field "slip": the image/pdf
- *   - field "order": JSON string with { currency, subtotal, items:[{ id, service, title, date, time, basePrice, extras[], lineTotal }] }
  * - Immediately records a Payment with status "verified"
  * - Marks all referenced appointments as paymentStatus="paid"
  */
@@ -72,7 +69,7 @@ router.post(
           originalName: req.file.originalname,
           storedName: req.file.filename,
         },
-        status: "verified", // 
+        status: "verified", 
       });
 
       // immediately mark all items as PAID (appointments or adoptions)
@@ -107,8 +104,7 @@ router.post(
 );
 
 /**
- * GET /api/payments?status=
- * (unchanged) – useful if   want to list payments, e.g. in admin
+ * GET /api/payments?status
  */
 router.get("/", requireAuth, async (req, res) => {
   try {
@@ -139,8 +135,6 @@ router.get("/", requireAuth, async (req, res) => {
 /**
  * PATCH /api/payments/mark-paid
  * Body: { items: [{ id, service }, ...] }
- * Keep this for idempotency when the frontend wants to force-sync “paid”.
- * It just sets those appointments to "paid" again.
  */
 router.patch("/mark-paid", requireAuth, async (req, res) => {
   try {
@@ -162,11 +156,8 @@ router.patch("/mark-paid", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * OPTIONAL: caretaker verification endpoints
- * These are now effectively no-ops, since uploads are already verified.
- * You can delete them if you prefer, or leave them as idempotent.
- */
+/** caretaker verification endpoints */
+
 router.patch("/:id/verify", requireAuth, requireCaretaker, async (req, res) => {
   const doc = await Payment.findById(req.params.id);
   if (!doc) return res.status(404).json({ message: "Not found" });
@@ -180,8 +171,6 @@ router.patch("/:id/verify", requireAuth, requireCaretaker, async (req, res) => {
 });
 
 router.patch("/:id/reject", requireAuth, requireCaretaker, async (req, res) => {
-  // With instant-verify flow, you likely don't need rejection anymore.
-  // If you still want to support it manually, keep this.
   try {
     const doc = await Payment.findById(req.params.id);
     if (!doc) return res.status(404).json({ message: "Not found" });
