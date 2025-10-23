@@ -6,7 +6,7 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 try {
   const msg = await client.messages.create({
     from: process.env.TWILIO_FROM_NUMBER, 
-    to: '+94760115847',                   // your verified Lankan mobile
+    to: '+94xxxxxxxxx',                   // your verified Lankan mobile
     body: 'PetPulse SMS OK (trial test)',
   });
   console.log('✅ Sent. SID:', msg.sid, 'Status:', msg.status);
